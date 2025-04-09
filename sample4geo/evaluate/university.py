@@ -1,19 +1,20 @@
-import torch
-import numpy as np
-from tqdm import tqdm
 import gc
+
+import numpy as np
+import torch
+from tqdm import tqdm
+
 from ..trainer import predict
+from .predict_files import save_predicts_for_submission
 
 
-def evaluate(config,
+def evaluate(config, outpath,
                   model,
                   query_loader,
                   gallery_loader,
                   ranks=[1, 5, 10],
                   step_size=1000,
                   cleanup=True):
-    
-    
     print("Extract Features:")
     img_features_query, ids_query = predict(config, model, query_loader)
     img_features_gallery, ids_gallery = predict(config, model, gallery_loader)
@@ -45,10 +46,12 @@ def evaluate(config,
         string.append('Recall@{}: {:.4f}'.format(i, CMC[i-1]*100))
         
     string.append('Recall@top1: {:.4f}'.format(CMC[top1]*100))
-    string.append('AP: {:.4f}'.format(AP))             
+    string.append('AP: {:.4f}'.format(AP))           
         
-    print(' - '.join(string)) 
-    
+    print(' - '.join(string))
+    save_filename = outpath + "/answer.txt"
+    save_predicts_for_submission(img_features_query, img_features_gallery, 
+                                 config.gallery_folder_acmm_test, save_filename=save_filename)
     # cleanup and free memory on GPU
     if cleanup:
         del img_features_query, ids_query, img_features_gallery, ids_gallery
@@ -61,7 +64,6 @@ def evaluate(config,
 def eval_query(qf,ql,gf,gl):
 
     score = gf @ qf.unsqueeze(-1)
-    
     score = score.squeeze().cpu().numpy()
  
     # predict index
@@ -74,9 +76,7 @@ def eval_query(qf,ql,gf,gl):
 
     # junk index
     junk_index = np.argwhere(gl==-1)
-    
-    
-    
+
     CMC_tmp = compute_mAP(index, good_index, junk_index)
     return CMC_tmp
 
@@ -109,7 +109,3 @@ def compute_mAP(index, good_index, junk_index):
         ap = ap + d_recall*(old_precision + precision)/2
 
     return ap, cmc
-
-
-
-

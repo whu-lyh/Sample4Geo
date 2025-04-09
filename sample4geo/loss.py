@@ -1,13 +1,11 @@
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-import torch.distributed.nn
+
 
 class InfoNCE(nn.Module):
-
     def __init__(self, loss_function, device='cuda' if torch.cuda.is_available() else 'cpu'):
         super().__init__()
-        
         self.loss_function = loss_function
         self.device = device
 
@@ -22,7 +20,6 @@ class InfoNCE(nn.Module):
         labels = torch.arange(len(logits_per_image1), dtype=torch.long, device=self.device)
         
         loss = (self.loss_function(logits_per_image1, labels) + self.loss_function(logits_per_image2, labels))/2
-
         return loss  
  
 

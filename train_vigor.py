@@ -16,7 +16,7 @@ from sample4geo.utils import setup_system, Logger
 from sample4geo.trainer import train
 from sample4geo.evaluate.vigor import evaluate, calc_sim
 from sample4geo.loss import InfoNCE
-from sample4geo.model import TimmModel
+from sample4geo.model.ConvNext import ConvNext
 
 
 @dataclass
@@ -127,7 +127,7 @@ if __name__ == '__main__':
     print("\nModel: {}".format(config.model))
 
 
-    model = TimmModel(config.model,
+    model = ConvNext(config.model,
                           pretrained=True,
                           img_size=config.img_size)
                           

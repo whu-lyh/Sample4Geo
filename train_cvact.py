@@ -1,22 +1,26 @@
-import os
-import time
 import math
+import os
+import pickle
 import shutil
 import sys
-import torch
-import pickle
+import time
 from dataclasses import dataclass
+
+import torch
 from torch.cuda.amp import GradScaler
 from torch.utils.data import DataLoader
-from transformers import get_constant_schedule_with_warmup, get_polynomial_decay_schedule_with_warmup, get_cosine_schedule_with_warmup
+from transformers import (get_constant_schedule_with_warmup,
+                          get_cosine_schedule_with_warmup,
+                          get_polynomial_decay_schedule_with_warmup)
 
-from sample4geo.dataset.cvact import CVACTDatasetTrain, CVACTDatasetEval, CVACTDatasetTest
-from sample4geo.transforms import get_transforms_train, get_transforms_val
-from sample4geo.utils import setup_system, Logger
-from sample4geo.trainer import train
-from sample4geo.evaluate.cvusa_and_cvact import evaluate, calc_sim
+from sample4geo.dataset.cvact import (CVACTDatasetEval, CVACTDatasetTest,
+                                      CVACTDatasetTrain)
+from sample4geo.evaluate.cvusa_and_cvact import calc_sim, evaluate
 from sample4geo.loss import InfoNCE
-from sample4geo.model import TimmModel
+from sample4geo.model.ConvNext import ConvNext
+from sample4geo.trainer import train
+from sample4geo.transforms import get_transforms_train, get_transforms_val
+from sample4geo.utils import Logger, setup_system
 
 
 @dataclass
@@ -100,8 +104,6 @@ config = Configuration()
 
 
 if __name__ == '__main__':
-
-
     model_path = "{}/{}/{}".format(config.model_path,
                                    config.model,
                                    time.strftime("%H%M%S"))
@@ -124,7 +126,7 @@ if __name__ == '__main__':
     print("\nModel: {}".format(config.model))
 
 
-    model = TimmModel(config.model,
+    model = ConvNext(config.model,
                           pretrained=True,
                           img_size=config.img_size)
                           

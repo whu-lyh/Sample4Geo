@@ -6,7 +6,7 @@ from torch.utils.data import DataLoader
 from sample4geo.dataset.cvact import CVACTDatasetEval, CVACTDatasetTest
 from sample4geo.transforms import get_transforms_val
 from sample4geo.evaluate.cvusa_and_cvact import evaluate
-from sample4geo.model import TimmModel
+from sample4geo.model.ConvNext import ConvNext
 
 
 @dataclass
@@ -53,7 +53,7 @@ if __name__ == '__main__':
     print("\nModel: {}".format(config.model))
 
 
-    model = TimmModel(config.model,
+    model = ConvNext(config.model,
                       pretrained=True,
                       img_size=config.img_size)
                           
