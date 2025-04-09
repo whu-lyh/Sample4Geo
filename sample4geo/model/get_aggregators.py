@@ -44,3 +44,11 @@ def get_aggregator(agg_arch='ConvAP', agg_config={}):
         assert 'cluster_dim' in agg_config
         assert 'token_dim' in agg_config
         return aggregators.SALAD(**agg_config)
+
+    elif 'netvlad' in agg_arch.lower():
+        assert 'feature_size' in agg_config
+        assert 'num_clusters' in agg_config
+        assert 'output_dim' in agg_config
+        return aggregators.NetVLADLoupe(**agg_config)
+    else:
+        raise NotImplementedError(f'Sorry, <{agg_arch.lower()}> aggregator is not implemented!')

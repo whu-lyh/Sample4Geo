@@ -16,32 +16,46 @@ from sample4geo.dataset.university import (U1652DatasetEval, U1652DatasetTrain,
                                            get_transforms)
 from sample4geo.evaluate.university import evaluate
 from sample4geo.loss import InfoNCE
-from sample4geo.model.ConvNext import ConvNext
-from sample4geo.model.dinov2 import DINOv2
+from sample4geo.model.get_model import get_model
 from sample4geo.trainer import train
 from sample4geo.utils import Logger, setup_system
 
+DINOV2_ARCHS = {
+    'dinov2_vits14': 384,
+    'dinov2_vitb14': 768,
+    'dinov2_vitl14': 1024,
+    'dinov2_vitg14': 1536,
+}
 
 @dataclass
 class Configuration:
     # Model
-    model: str = 'DINOv2' # ConvNext
+    model: str = '' # 'DINOv2' # ConvNext
+    arch_name: str = 'dinov2_vitb14'
+    num_trainable_blocks: int = 4
+
+    # Aggregator
+    aggregator_name: str = 'salad' #'salad' #'gem'
+    num_channels: int = DINOV2_ARCHS[arch_name]
+    num_clusters: int = 64
+    cluster_dim: int = 128
+    token_dim: int = 256
     
     # Override model image size
-    img_size: int = 518 # 384 for ConvNext
+    img_size: int = 518 # 384 for ConvNext 518 for DINOv2
     
     # Training 
     mixed_precision: bool = True
     custom_sampling: bool = True         # use custom sampling instead of random
     seed = 1
-    epochs: int = 100
-    batch_size: int = 14                # keep in mind real_batch_size = 2 * batch_size
+    epochs: int = 51
+    batch_size: int = 10                # keep in mind real_batch_size = 2 * batch_size
     verbose: bool = True
     gpu_ids: tuple = (0)#,1,2,3)           # GPU ids for training
     
     # Eval
     batch_size_eval: int = 64
-    eval_every_n_epoch: int = 3          # eval every n Epoch
+    eval_every_n_epoch: int = 2          # eval every n Epoch
     normalize_features: bool = True
     eval_gallery_n: int = -1             # -1 for all or int
 
@@ -123,7 +137,7 @@ if __name__ == '__main__':
     model_path = "{}/{}_{}/{}".format(config.model_path, config.model, config.dataset, time.strftime("%H%M%S"))
     if not os.path.exists(model_path):
         os.makedirs(model_path)
-    # shutil.copyfile(os.path.basename(__file__), "{}/train.py".format(model_path))
+    shutil.copyfile(os.path.basename(__file__), "{}/train.py".format(model_path))
 
     # Redirect print to both console and log file
     sys.stdout = Logger(os.path.join(model_path, 'log.txt'))
@@ -137,17 +151,7 @@ if __name__ == '__main__':
     #-----------------------------------------------------------------------------#
 
     print("\nModel: {}".format(config.model))
-    if config.model == 'ConvNext':
-        model = ConvNext(pretrained=True, img_size=config.img_size)
-        # to keep same transform
-        data_config = model.get_config()
-        print(data_config)
-        mean = data_config["mean"]
-        std = data_config["std"]
-    elif config.model == 'DINOv2':
-        model = DINOv2()
-        mean = [0.485, 0.456, 0.406]
-        std = [0.229, 0.224, 0.225]
+    model, mean, std = get_model(config)
 
     # Activate gradient checkpointing
     if config.grad_checkpointing:

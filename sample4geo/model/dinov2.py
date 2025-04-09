@@ -20,39 +20,31 @@ class DINOv2(nn.Module):
         model_name (str): The name of the model architecture 
             should be one of ('dinov2_vits14', 'dinov2_vitb14', 'dinov2_vitl14', 'dinov2_vitg14')
         num_trainable_blocks (int): The number of last blocks in the model that are trainable.
+        aggregator_name (str):
+        agg_config (dict): 
         norm_layer (bool): If True, a normalization layer is applied in the forward pass.
         return_token (bool): If True, the forward pass returns both the feature map and the token.
     """
     def __init__(
             self,
-            model_name='dinov2_vits14',
+            model_name='dinov2_vitb14',
             aggregator_name='gem',
+            agg_config={},
             num_trainable_blocks=4,
             norm_layer=True,
-            return_token=False
+            return_token=True
         ):
         super().__init__()
 
         assert model_name in DINOV2_ARCHS.keys(), f'Unknown model name {model_name}'
-        self.backbone = torch.hub.load('facebookresearch/dinov2', model_name) # poor network
-        # self.backbone = timm.create_model('vit_small_path14_dinov2', pretrained=False)
-        # state_dict = torch.load('/workspace/WorkSpacePR/Sample4Geo/pretrain_models/dinov2_vits14.pth', map_location='cpu')
-        # self.backbone.load_state_dict(state_dict, strict=False)
-        # pretrained_weight_path = '/workspace/WorkSpacePR/Sample4Geo/pretrain_models/vit_small_patch14_dinov2.bin'
-        # self.backbone = timm.create_model(
-        #     'vit_small_patch14_dinov2', True, num_classes=0,
-        #     pretrained_cfg_overlay=dict(file=pretrained_weight_path, custom_load=False),
-        # )
-        agg_config={
-            # 'num_channels': 384,
-            # 'num_clusters': 64,
-            # 'cluster_dim': 128,
-            # 'token_dim': 256,
-            'p': 3
-        }
+        self.backbone = torch.hub.load('facebookresearch/dinov2', model_name)
+        self.aggregator_name = aggregator_name
         self.aggregator = get_aggregator(agg_arch=aggregator_name, agg_config=agg_config)
         self.num_channels = DINOV2_ARCHS[model_name]
-        self.feature_dim = 384#agg_config["token_dim"]
+        if self.aggregator_name == 'salad':
+            self.feature_dim = agg_config["token_dim"] + agg_config["cluster_dim"]*agg_config["num_clusters"]
+        elif self.aggregator_name == 'netvlad':
+            self.feature_dim = agg_config["output_dim"]
         self.num_trainable_blocks = num_trainable_blocks
         self.norm_layer = norm_layer
         self.return_token = return_token
@@ -97,6 +89,9 @@ class DINOv2(nn.Module):
         return f
 
     def forward_aggregator(self, x):
+        if self.aggregator_name == 'netvlad': # reorganized as BNC
+            B, C, _, _ = x.shape
+            x = x.reshape((B, -1, C))
         x = self.aggregator(x)
         return x
 
