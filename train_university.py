@@ -30,8 +30,8 @@ DINOV2_ARCHS = {
 @dataclass
 class Configuration:
     # Model
-    model: str = 'SaliencyCVGL' # 'SaliencyCVGL' # 'DINOv2' # ConvNext
-    dual_mode: bool = True # for SaliencyCVGL, False for shared backbone
+    model: str = 'ConvNext' # 'SaliencyCVGL' # 'DINOv2' # ConvNext
+    dual_mode: bool = False # for SaliencyCVGL, False for shared backbone
     arch_name: str = 'dinov2_vitb14'
     num_trainable_blocks: int = 2
 
@@ -43,19 +43,20 @@ class Configuration:
     token_dim: int = 256
     
     # Override model image size
-    img_size: int = 518 # 384 for ConvNext or 518 for DINOv2
+    img_size: int = 384 # 384 for ConvNext or 518 for DINOv2
     
     # Training 
     mixed_precision: bool = True
     custom_sampling: bool = True         # use custom sampling instead of random
     seed = 1
-    epochs: int = 100
-    batch_size: int = 64                # keep in mind real_batch_size = 2 * batch_size, 10 for ConvNext 16 for DINOv2, 64 for SaliencyCVGL
+    epochs: int = 3
+    batch_size: int = 10                # keep in mind real_batch_size = 2 * batch_size, 10 for ConvNext 16 for DINOv2, 64 for SaliencyCVGL
     verbose: bool = True
-    gpu_ids: tuple = (0)#,1,2,3)           # GPU ids for training
+    gpu_ids: tuple = (0)#,1,2,3)        # GPU ids for training
+    accum_steps: int = 128              # accumulation steps    
     
     # Eval
-    batch_size_eval: int = 64
+    batch_size_eval: int = 128
     eval_every_n_epoch: int = 1          # eval every n Epoch
     normalize_features: bool = True
     eval_gallery_n: int = -1             # -1 for all or int
@@ -69,13 +70,13 @@ class Configuration:
     label_smoothing: float = 0.2
     
     # Learning Rate
-    lr: float = 0.00001                    # 1 * 10^-4 for ViT | 1 * 10^-1 for CNN
-    scheduler: str = "cosine"           # "polynomial" | "cosine" | "constant" | None
-    warmup_epochs: int = 5
-    lr_end: float = 0.0000001               #  only for "polynomial"
+    lr: float = 0.0005                    # 1 * 10^-4 for ViT | 1 * 10^-1 for CNN
+    scheduler: str = "cosine"             # "polynomial" | "cosine" | "constant" | None
+    warmup_epochs: int = 0.1
+    lr_end: float = 0.0000001             #  only for "polynomial"
     
     # Dataset
-    dataset: str = 'U1652-D2S'           # 'U1652-D2S' | 'U1652-S2D' | 'U1652-S2S'
+    dataset: str = 'U1652-S2D'           # 'U1652-D2S' | 'U1652-S2D' | 'U1652-S2S'
 
     # Augment Images
     prob_flip: float = 0.5              # flipping the sat image and drone image simultaneously
@@ -87,7 +88,7 @@ class Configuration:
     predict_file_path: str = ""
 
     # Eval before training
-    zero_shot: bool = False
+    zero_shot: bool = True
 
     # Checkpoint to start from
     checkpoint_start = None
@@ -203,13 +204,11 @@ if __name__ == '__main__':
                                                mode="query",
                                                transforms=val_transforms,
                                                )
-
     query_dataloader_test = DataLoader(query_dataset_test,
                                        batch_size=config.batch_size_eval,
                                        num_workers=config.num_workers,
                                        shuffle=False,
                                        pin_memory=True)
-
     # Query Ground Images Test
     gallery_dataset_test = U1652DatasetEval(data_folder=config.gallery_folder_test,
                                                mode="gallery",
@@ -217,7 +216,6 @@ if __name__ == '__main__':
                                                sample_ids=query_dataset_test.get_sample_ids(),
                                                gallery_n=config.eval_gallery_n,
                                                )
-
     gallery_dataloader_test = DataLoader(gallery_dataset_test,
                                        batch_size=config.batch_size_eval,
                                        num_workers=config.num_workers,

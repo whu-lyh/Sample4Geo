@@ -15,11 +15,13 @@ def train(train_config, model, dataloader, loss_function, optimizer, scheduler=N
     # Zero gradients for first step
     optimizer.zero_grad(set_to_none=True)
     step = 1
+    accum_steps = int(train_config.accum_steps)
+    accum_steps = (accum_steps if accum_steps > 1 else 1)
     
     bar = tqdm(dataloader, total=len(dataloader)) if train_config.verbose else dataloader
     
     # for loop over one epoch
-    for query, reference, ids in bar:
+    for iteration, (query, reference, ids) in enumerate(bar):
         if scaler:
             with autocast():
                 # data (batches) to device   
@@ -32,7 +34,7 @@ def train(train_config, model, dataloader, loss_function, optimizer, scheduler=N
                 else:
                     loss = loss_function(features1, features2, model.logit_scale.exp()) 
                 losses.update(loss.item())
-
+            loss = loss / accum_steps
             scaler.scale(loss).backward()
 
             # Gradient clipping 
@@ -64,23 +66,25 @@ def train(train_config, model, dataloader, loss_function, optimizer, scheduler=N
             losses.update(loss.item())
 
             # Calculate gradient using backward pass
+            loss = loss / accum_steps
             loss.backward()
             
             # Gradient clipping 
             if train_config.clip_grad:
                 torch.nn.utils.clip_grad_value_(model.parameters(), train_config.clip_grad)                  
             
-            # Update model parameters (weights)
-            optimizer.step()
-            # Zero gradients for next step
-            optimizer.zero_grad()
+            if (iteration + 1) % accum_steps == 0 or (iteration + 1) == len(dataloader):
+                # Update model parameters (weights)
+                optimizer.step()
+                # Zero gradients for next step
+                optimizer.zero_grad()
             
             # Scheduler
             if train_config.scheduler == "polynomial" or train_config.scheduler == "cosine" or train_config.scheduler ==  "constant":
                 scheduler.step()
 
         if train_config.verbose:
-            monitor = {"loss": "{:.4f}".format(loss.item()),
+            monitor = {"loss": "{:.4f}".format(loss.item() * accum_steps),
                        "loss_avg": "{:.4f}".format(losses.avg),
                        "lr" : "{:.6f}".format(optimizer.param_groups[0]['lr'])}
             bar.set_postfix(ordered_dict=monitor)
