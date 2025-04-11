@@ -6,30 +6,49 @@ from torch.utils.data import DataLoader
 
 from sample4geo.dataset.university import U1652DatasetEval, get_transforms
 from sample4geo.evaluate.university import evaluate
-from sample4geo.model.ConvNext import ConvNext
+from sample4geo.model.get_model import get_model
 
+
+DINOV2_ARCHS = {
+    'dinov2_vits14': 384,
+    'dinov2_vitb14': 768,
+    'dinov2_vitl14': 1024,
+    'dinov2_vitg14': 1536,
+}
 
 @dataclass
 class Configuration:
     # Model
-    model: str = 'DINOv2' # ConvNext
+    model: str = 'DINOv2' # 'DINOv2' # ConvNext
+    arch_name: str = 'dinov2_vitb14'
+    num_trainable_blocks: int = 4
+
+    # Aggregator
+    aggregator_name: str = 'salad' #'salad' #'gem'
+    num_channels: int = DINOV2_ARCHS[arch_name]
+    num_clusters: int = 64
+    cluster_dim: int = 128
+    token_dim: int = 256
     
     # Override model image size
-    img_size: int = 224 # 384 for ConvNext
+    img_size: int = 518 # 384 for ConvNext 518 for DINOv2
     
     # Evaluation
-    batch_size: int = 96
+    batch_size: int = 10
     verbose: bool = True
     gpu_ids: tuple = (0,)
-    normalize_features: bool = True
+    normalize_features: bool = False if model == 'SaliencyCVGL' else True
     eval_gallery_n: int = -1             # -1 for all or int
     
     # Dataset
     dataset: str = 'U1652-S2S'           # 'U1652-D2S' | 'U1652-S2D' | 'U1652-S2S'
     
     # Checkpoint to start from
-    checkpoint_start = ''
-  
+    checkpoint_start: str = '/workspace/WorkSpacePR/Sample4Geo/run_logs/DINOv2_U1652-S2S/153041/weights_end.pth'
+
+    # Outpath
+    model_path: str = "/workspace/WorkSpacePR/Sample4Geo/run_logs/DINOv2_U1652-S2S/153041"
+
     # set num_workers to 0 if on Windows
     num_workers: int = 0 if os.name == 'nt' else 4 
     
@@ -70,12 +89,8 @@ if __name__ == '__main__':
     # Model                                                                       #
     #-----------------------------------------------------------------------------#
     print("\nModel: {}".format(config.model))
-    model = ConvNext(config.model, pretrained=True, img_size=config.img_size)
-                          
-    data_config = model.get_config()
-    print(data_config)
-    mean = data_config["mean"]
-    std = data_config["std"]
+    model, mean, std = get_model(config)
+
     img_size = (config.img_size, config.img_size)
 
     # load pretrained Checkpoint    
@@ -137,6 +152,7 @@ if __name__ == '__main__':
 
     r1_test = evaluate(config=config,
                        model=model,
+                       outpath=config.model_path,
                        query_loader=query_dataloader_test,
                        gallery_loader=gallery_dataloader_test, 
                        ranks=[1, 5, 10],

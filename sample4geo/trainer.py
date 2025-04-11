@@ -88,7 +88,7 @@ def train(train_config, model, dataloader, loss_function, optimizer, scheduler=N
         step += 1
     return losses.avg
 
-def predict(train_config, model, dataloader):
+def predict(train_config, model, dataloader, is_query=False):
     model.eval()
     
     bar = tqdm(dataloader, total=len(dataloader)) if train_config.verbose else dataloader
@@ -108,12 +108,16 @@ def predict(train_config, model, dataloader):
         index = 0
         for img, ids in bar:
             batch_size = img.size(0)
-
             img = img.to(device, non_blocking=True)
             ids = ids.to(device, non_blocking=True)
-
             with autocast(dtype=torch.float16):
-                img_feature = model(img)
+                if train_config.dual_mode:
+                    if is_query:
+                        img_feature = model.fetch_feat_stre(img)
+                    else:
+                        img_feature = model.fetch_feat_sate(img)
+                else:
+                    img_feature = model(img)
 
             if normalize_features:
                 img_feature = F.normalize(img_feature.float(), dim=-1)

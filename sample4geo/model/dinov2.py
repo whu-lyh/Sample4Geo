@@ -35,9 +35,11 @@ class DINOv2(nn.Module):
             return_token=True
         ):
         super().__init__()
-
         assert model_name in DINOV2_ARCHS.keys(), f'Unknown model name {model_name}'
-        self.backbone = torch.hub.load('facebookresearch/dinov2', model_name)
+        try:
+            self.backbone = torch.hub.load('/root/.cache/torch/hub/facebookresearch_dinov2_main', model_name, trust_repo=True, source='local')
+        except:
+            self.backbone = torch.hub.load('facebookresearch/dinov2', model_name)
         self.aggregator_name = aggregator_name
         self.aggregator = get_aggregator(agg_arch=aggregator_name, agg_config=agg_config)
         self.num_channels = DINOV2_ARCHS[model_name]

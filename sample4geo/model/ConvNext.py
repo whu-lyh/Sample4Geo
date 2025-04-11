@@ -25,8 +25,8 @@ class ConvNext(nn.Module):
         # create a dummy input to get the feature dimension
         dummy_input = torch.zeros(1, *self.model.default_cfg['input_size'])
         with torch.no_grad():
-            feature_output = self.model.forward_features(dummy_input)
-        self.feature_dim = feature_output.shape[1]
+            feature_output = self.model(dummy_input)
+        return feature_output.shape[1]
 
     def set_grad_checkpointing(self, enable=True):
         self.model.set_grad_checkpointing(enable)

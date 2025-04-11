@@ -8,15 +8,12 @@ from ..trainer import predict
 from .predict_files import save_predicts_for_submission
 
 
-def evaluate(config, outpath,
-                  model,
-                  query_loader,
-                  gallery_loader,
+def evaluate(config, outpath, model, query_loader, gallery_loader,
                   ranks=[1, 5, 10],
                   step_size=1000,
                   cleanup=True):
     print("Extract Features:")
-    img_features_query, ids_query = predict(config, model, query_loader)
+    img_features_query, ids_query = predict(config, model, query_loader, is_query=True)
     img_features_gallery, ids_gallery = predict(config, model, gallery_loader)
     
     gl = ids_gallery.cpu().numpy()
@@ -36,22 +33,22 @@ def evaluate(config, outpath,
     
     CMC = CMC.float()
     CMC = CMC/len(ids_query) #average CMC
-    
+
     # top 1%
     top1 = round(len(ids_gallery)*0.01)
-    
+
     string = []
-             
+
     for i in ranks:
         string.append('Recall@{}: {:.4f}'.format(i, CMC[i-1]*100))
-        
+
     string.append('Recall@top1: {:.4f}'.format(CMC[top1]*100))
     string.append('AP: {:.4f}'.format(AP))           
-        
     print(' - '.join(string))
-    save_filename = outpath + "/answer.txt"
-    save_predicts_for_submission(img_features_query, img_features_gallery, 
-                                 config.gallery_folder_acmm_test, save_filename=save_filename)
+    if config.dataset == 'U1652-S2S':
+        save_filename = outpath + "/answer.txt"
+        save_predicts_for_submission(img_features_query, img_features_gallery, 
+                                    config.gallery_folder_acmm_test, save_filename=save_filename)
     # cleanup and free memory on GPU
     if cleanup:
         del img_features_query, ids_query, img_features_gallery, ids_gallery

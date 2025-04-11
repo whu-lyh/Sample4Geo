@@ -30,32 +30,33 @@ DINOV2_ARCHS = {
 @dataclass
 class Configuration:
     # Model
-    model: str = '' # 'DINOv2' # ConvNext
+    model: str = 'SaliencyCVGL' # 'SaliencyCVGL' # 'DINOv2' # ConvNext
+    dual_mode: bool = True # for SaliencyCVGL, False for shared backbone
     arch_name: str = 'dinov2_vitb14'
-    num_trainable_blocks: int = 4
+    num_trainable_blocks: int = 2
 
     # Aggregator
-    aggregator_name: str = 'salad' #'salad' #'gem'
+    aggregator_name: str = 'netvlad' #'salad' #'gem'
     num_channels: int = DINOV2_ARCHS[arch_name]
     num_clusters: int = 64
     cluster_dim: int = 128
     token_dim: int = 256
     
     # Override model image size
-    img_size: int = 518 # 384 for ConvNext 518 for DINOv2
+    img_size: int = 518 # 384 for ConvNext or 518 for DINOv2
     
     # Training 
     mixed_precision: bool = True
     custom_sampling: bool = True         # use custom sampling instead of random
     seed = 1
-    epochs: int = 51
-    batch_size: int = 10                # keep in mind real_batch_size = 2 * batch_size
+    epochs: int = 100
+    batch_size: int = 64                # keep in mind real_batch_size = 2 * batch_size, 10 for ConvNext 16 for DINOv2, 64 for SaliencyCVGL
     verbose: bool = True
     gpu_ids: tuple = (0)#,1,2,3)           # GPU ids for training
     
     # Eval
     batch_size_eval: int = 64
-    eval_every_n_epoch: int = 2          # eval every n Epoch
+    eval_every_n_epoch: int = 1          # eval every n Epoch
     normalize_features: bool = True
     eval_gallery_n: int = -1             # -1 for all or int
 
@@ -69,12 +70,12 @@ class Configuration:
     
     # Learning Rate
     lr: float = 0.00001                    # 1 * 10^-4 for ViT | 1 * 10^-1 for CNN
-    scheduler: str = "polynomial"           # "polynomial" | "cosine" | "constant" | None
+    scheduler: str = "cosine"           # "polynomial" | "cosine" | "constant" | None
     warmup_epochs: int = 5
     lr_end: float = 0.0000001               #  only for "polynomial"
     
     # Dataset
-    dataset: str = 'U1652-S2S'           # 'U1652-D2S' | 'U1652-S2D' | 'U1652-S2S'
+    dataset: str = 'U1652-D2S'           # 'U1652-D2S' | 'U1652-S2D' | 'U1652-S2S'
 
     # Augment Images
     prob_flip: float = 0.5              # flipping the sat image and drone image simultaneously
@@ -92,7 +93,7 @@ class Configuration:
     checkpoint_start = None
 
     # set num_workers to 0 if on Windows
-    num_workers: int = 0 if os.name == 'nt' else 4 
+    num_workers: int = 0 if os.name == 'nt' else 8 
 
     # train on GPU if available
     device: str = 'cuda' if torch.cuda.is_available() else 'cpu' 
